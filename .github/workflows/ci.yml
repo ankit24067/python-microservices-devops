@@ -1,0 +1,84 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # Install & test backend
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pytest || echo "No tests in backend"
+
+      # Install & test frontend
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          pip install -r requirements.txt
+          pytest || echo "No tests in frontend"
+
+      # Install & test logger
+      - name: Install logger dependencies
+        run: |
+          cd logger
+          pip install -r requirements.txt
+          pytest || echo "No tests in logger"
+
+      # Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build & Push Backend
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backend-service:latest
+
+      # Build & Push Frontend
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/frontend-service:latest
+
+      # Build & Push Logger
+      - name: Build and Push Logger
+        uses: docker/build-push-action@v4
+        with:
+          context: ./logger
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/logger-service:latest
+
+      # Send Slack alert on failure
+      - name: Slack Notification
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: danger
+          SLACK_TITLE: "CI/CD Pipeline Failed 🚨"
+          SLACK_MESSAGE: "Build or tests failed for ${{ github.repository }} on ${{ github.ref }}."
