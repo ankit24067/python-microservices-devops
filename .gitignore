@@ -1,0 +1,25 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# SSH keys
+*.pem
+*.pub
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+*.swp
+
+# Environment / venv
+.env
+.venv/
+venv/
+ENV/
